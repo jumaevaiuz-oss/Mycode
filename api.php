@@ -8,6 +8,11 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 $action = $_GET['action'] ?? '';
 
 switch ($action) {
@@ -21,7 +26,7 @@ switch ($action) {
         getLesson();
         break;
     default:
-        echo json_encode(['error' => 'Noma\'lum action']);
+        echo json_encode(['success' => false, 'message' => 'Noma\'lum action']);
 }
 
 // Barcha bo'limlarni olish
@@ -54,7 +59,7 @@ function getSections(): void {
 function getLessons(): void {
     $sectionId = (int)($_GET['section_id'] ?? 0);
     if (!$sectionId) {
-        echo json_encode(['error' => 'section_id kerak']);
+        echo json_encode(['success' => false, 'message' => 'section_id kerak']);
         return;
     }
 
@@ -66,7 +71,7 @@ function getLessons(): void {
     $section = $stmt->fetch();
 
     if (!$section) {
-        echo json_encode(['error' => 'Bo\'lim topilmadi']);
+        echo json_encode(['success' => false, 'message' => 'Bo\'lim topilmadi']);
         return;
     }
 
@@ -98,7 +103,7 @@ function getLessons(): void {
 function getLesson(): void {
     $lessonId = (int)($_GET['id'] ?? 0);
     if (!$lessonId) {
-        echo json_encode(['error' => 'id kerak']);
+        echo json_encode(['success' => false, 'message' => 'id kerak']);
         return;
     }
 
@@ -113,7 +118,7 @@ function getLesson(): void {
     $lesson = $stmt->fetch();
 
     if (!$lesson) {
-        echo json_encode(['error' => 'Darslik topilmadi']);
+        echo json_encode(['success' => false, 'message' => 'Darslik topilmadi']);
         return;
     }
 

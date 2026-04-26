@@ -8,7 +8,8 @@ $ch = curl_init(BOT_URL . '/setWebhook');
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => [
-        'url' => $webhookUrl,
+        'url'          => $webhookUrl,
+        'secret_token' => WEBHOOK_SECRET,
     ],
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_SSL_VERIFYPEER => false,
