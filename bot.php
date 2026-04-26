@@ -20,14 +20,19 @@ $input = file_get_contents('php://input');
 $update = json_decode($input, true);
 if (!$update) exit;
 
-// Telegramga darhol 200 OK qaytaramiz (timeout oldini olish)
+// Telegramga darhol 200 OK qaytaramiz va bog'lanishni yopamiz
+ob_start();
 http_response_code(200);
 header('Content-Type: application/json');
+header('Connection: close');
 echo json_encode(['ok' => true]);
-
-// Output bufferingni yopamiz
-if (ob_get_level()) ob_end_flush();
+$responseSize = ob_get_length();
+header("Content-Length: $responseSize");
+ob_end_flush();
 flush();
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
 
 // Keyin botni ishlatamiz
 $message  = $update['message'] ?? null;
@@ -299,7 +304,6 @@ function handleCallback(array $cb): void {
         $db = getDB();
         $db->prepare("UPDATE sections SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Bo'lim o'chirildi.");
-        sleep(1);
         editSectionsList($chatId, $msgId);
         return;
     }
@@ -365,7 +369,6 @@ function handleCallback(array $cb): void {
         $sectionId = $lesson ? (int)$lesson['section_id'] : 0;
         $db->prepare("UPDATE lessons SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Darslik o'chirildi.");
-        sleep(1);
         if ($sectionId) editLessonsList($chatId, $msgId, $sectionId);
         else editSectionsForLessons($chatId, $msgId);
         return;
