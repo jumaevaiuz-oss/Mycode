@@ -41,13 +41,14 @@ function getDB(): PDO {
                 ]
             );
         } catch (PDOException $e) {
-            die(json_encode(['error' => 'DB ulanmadi']));
+            die(json_encode(['success' => false, 'message' => 'DB ulanmadi']));
         }
     }
     return $pdo;
 }
 
 // Uploads papkalarini yaratish
-if (!is_dir(UPLOAD_DIR))              mkdir(UPLOAD_DIR, 0755, true);
+if (!is_dir(UPLOAD_DIR))               mkdir(UPLOAD_DIR,                0755, true);
 if (!is_dir(UPLOAD_DIR . 'sections/')) mkdir(UPLOAD_DIR . 'sections/', 0755, true);
-if (!is_dir(UPLOAD_DIR . 'lessons/'))  mkdir(UPLOAD_DIR . 'lessons/', 0755, true);
+if (!is_dir(UPLOAD_DIR . 'lessons/'))  mkdir(UPLOAD_DIR . 'lessons/',  0755, true);
+if (!is_dir(UPLOAD_DIR . 'banner/'))   mkdir(UPLOAD_DIR . 'banner/',   0755, true);

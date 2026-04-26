@@ -9,6 +9,13 @@ ignore_user_abort(true);
 require_once 'config.php';
 require_once 'upload_helper.php';
 
+// Webhook autentifikatsiyasi
+$secretToken = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+if ($secretToken !== WEBHOOK_SECRET) {
+    http_response_code(403);
+    exit;
+}
+
 $input = file_get_contents('php://input');
 $update = json_decode($input, true);
 if (!$update) exit;
@@ -344,7 +351,7 @@ function handleCallback(array $cb): void {
         $id = (int)str_replace('delete_lesson_', '', $data);
         $kb = ['inline_keyboard' => [[
             ['text' => '✅ Ha, o\'chir', 'callback_data' => "confirm_del_les_{$id}"],
-            ['text' => '❌ Yo\'q', 'callback_data' => 'lessons_menu'],
+            ['text' => '❌ Yo\'q', 'callback_data' => "edit_lesson_{$id}"],
         ]]];
         editMessage($chatId, $msgId, "⚠️ Darslikni o'chirmoqchimisiz?", $kb);
         return;
@@ -352,10 +359,15 @@ function handleCallback(array $cb): void {
     if (str_starts_with($data, 'confirm_del_les_')) {
         $id = (int)str_replace('confirm_del_les_', '', $data);
         $db = getDB();
+        $row = $db->prepare("SELECT section_id FROM lessons WHERE id=?");
+        $row->execute([$id]);
+        $lesson = $row->fetch();
+        $sectionId = $lesson ? (int)$lesson['section_id'] : 0;
         $db->prepare("UPDATE lessons SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Darslik o'chirildi.");
         sleep(1);
-        editSectionsForLessons($chatId, $msgId);
+        if ($sectionId) editLessonsList($chatId, $msgId, $sectionId);
+        else editSectionsForLessons($chatId, $msgId);
         return;
     }
 
@@ -368,9 +380,12 @@ function handleCallback(array $cb): void {
         editMessage($chatId, $msgId, "📣 Barcha foydalanuvchilarga yuboriladigan xabarni yozing:\n\n_Bekor qilish uchun /cancel_");
         return;
     }
-    if (str_starts_with($data, 'confirm_broadcast_')) {
-        $text = base64_decode(str_replace('confirm_broadcast_', '', $data));
-        doBroadcast($chatId, $msgId, $text);
+    if ($data === 'confirm_broadcast') {
+        $bState = getState($userId);
+        $bText  = $bState['data']['text'] ?? '';
+        clearState($userId);
+        if ($bText) doBroadcast($chatId, $msgId, $bText);
+        else editToAdminMenu($chatId, $msgId);
         return;
     }
     if ($data === 'cancel_broadcast') {
@@ -427,9 +442,8 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
             $newId = $db->lastInsertId();
             clearState($userId);
             sendMessage($chatId, "✅ Bo'lim qo'shildi: *{$text}*\n\nEndi rasmini yuboring yoki /cancel");
-            setState($userId, 'waiting_section_photo', ['section_id' => $newId, 'is_new' => true]);
-            // Bildirishnoma
-            notifyUsers("📂 *Yangi bo'lim qo'shildi!*\n\n📁 *{$text}*\n\n🚀 Avtopilot orqali ko'ring!", $userId);
+            // Bildirishnoma rasm saqlanganidan keyin yuboriladi (is_new=true)
+            setState($userId, 'waiting_section_photo', ['section_id' => $newId, 'is_new' => true, 'name' => $text]);
             break;
 
         // Bo'lim nomini o'zgartirish
@@ -485,10 +499,8 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
 
             clearState($userId);
             sendMessage($chatId, "✅ Darslik qo'shildi: *{$data['title']}*\n\nEndi obložka rasmini yuboring yoki /cancel");
-            setState($userId, 'waiting_lesson_photo', ['lesson_id' => $newId, 'is_new' => true]);
-
-            // Bildirishnoma
-            notifyUsers("📚 *Yangi darslik qo'shildi!*\n\n📁 Bo'lim: *{$secName}*\n📖 Darslik: *{$data['title']}*\n\n🚀 Avtopilot orqali ko'ring!", $userId);
+            // Bildirishnoma rasm saqlanganidan keyin yuboriladi (is_new=true)
+            setState($userId, 'waiting_lesson_photo', ['lesson_id' => $newId, 'is_new' => true, 'title' => $data['title'], 'sec_name' => $secName]);
             break;
 
         // Darslik linkini o'zgartirish
@@ -509,9 +521,9 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
 
         // Broadcast xabari
         case 'waiting_broadcast':
-            $encoded = base64_encode($text);
+            setState($userId, 'pending_broadcast', ['text' => $text]);
             $kb = ['inline_keyboard' => [[
-                ['text' => '✅ Yuborish', 'callback_data' => "confirm_broadcast_{$encoded}"],
+                ['text' => '✅ Yuborish', 'callback_data' => 'confirm_broadcast'],
                 ['text' => '❌ Bekor', 'callback_data' => 'cancel_broadcast'],
             ]]];
             sendMessage($chatId, "📣 *Preview:*\n\n{$text}\n\n---\nBarcha foydalanuvchilarga yuborilsin?", $kb);
@@ -581,6 +593,9 @@ function handleImageUpload(array $msg, ?array $state, int $chatId, int $userId):
         $db->prepare("UPDATE sections SET image_path=? WHERE id=?")->execute([$fileName, $data['section_id']]);
         clearState($userId);
         sendMessage($chatId, "✅ Bo'lim rasmi saqlandi!");
+        if (!empty($data['is_new']) && !empty($data['name'])) {
+            notifyUsers("📂 *Yangi bo'lim qo'shildi!*\n\n📁 *{$data['name']}*\n\n🚀 Avtopilot orqali ko'ring!", $userId);
+        }
         sendAdminMenu($chatId);
 
     } elseif ($stateName === 'waiting_lesson_photo' && isset($data['lesson_id'])) {
@@ -595,6 +610,9 @@ function handleImageUpload(array $msg, ?array $state, int $chatId, int $userId):
         $db->prepare("UPDATE lessons SET cover_image=? WHERE id=?")->execute([$fileName, $data['lesson_id']]);
         clearState($userId);
         sendMessage($chatId, "✅ Darslik rasmi saqlandi!");
+        if (!empty($data['is_new']) && !empty($data['title'])) {
+            notifyUsers("📚 *Yangi darslik qo'shildi!*\n\n📁 Bo'lim: *{$data['sec_name']}*\n📖 Darslik: *{$data['title']}*\n\n🚀 Avtopilot orqali ko'ring!", $userId);
+        }
         sendAdminMenu($chatId);
     }
 }
@@ -693,6 +711,7 @@ function editLessonsList(int $chatId, int $msgId, int $sectionId): void {
     $sec  = $db->prepare("SELECT * FROM sections WHERE id=?");
     $sec->execute([$sectionId]);
     $s = $sec->fetch();
+    if (!$s) { editSectionsForLessons($chatId, $msgId); return; }
 
     $lst  = $db->prepare("SELECT * FROM lessons WHERE section_id=? AND is_active=1 ORDER BY sort_order");
     $lst->execute([$sectionId]);
@@ -944,8 +963,3 @@ function answerCallback(string $id): void {
     curl_close($ch);
 }
 
-// Foydalanuvchi tugmalarini qayta ishlash (message handler ichida)
-// Bu yerda handleUserButton chaqiriladi
-function routeUserMessage(int $chatId, int $userId, string $text): void {
-    handleUserButton($chatId, $userId, $text);
-}

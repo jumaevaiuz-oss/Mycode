@@ -10,18 +10,25 @@ require_once 'config.php';
  * @return string|null    - Fayl nomi yoki null
  */
 function downloadTelegramFileTo(string $fileId, string $type): ?string {
+    // Ruxsat etilgan papkalar
+    if (!in_array($type, ['sections', 'lessons'], true)) return null;
+
     // Fayl yo'lini olish
     $ch = curl_init(BOT_URL . '/getFile');
     curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => ['file_id' => $fileId],
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => ['file_id' => $fileId],
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
     $response = curl_exec($ch);
     curl_close($ch);
 
     $data = json_decode($response, true);
     if (!$data['ok']) return null;
+
+    // 10MB hajm chekovi
+    if (($data['result']['file_size'] ?? 0) > 10 * 1024 * 1024) return null;
 
     $tgPath = $data['result']['file_path'];
     $ext = strtolower(pathinfo($tgPath, PATHINFO_EXTENSION));
@@ -46,7 +53,8 @@ function downloadTelegramFileTo(string $fileId, string $type): ?string {
     curl_setopt_array($ch2, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_SSL_VERIFYPEER => false,
     ]);
     $content = curl_exec($ch2);
     curl_close($ch2);

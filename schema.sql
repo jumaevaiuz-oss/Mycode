@@ -30,6 +30,24 @@ CREATE TABLE IF NOT EXISTS lessons (
     FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
 );
 
+-- Foydalanuvchilar jadvali
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    telegram_id BIGINT NOT NULL UNIQUE,
+    username VARCHAR(100) DEFAULT NULL,
+    full_name VARCHAR(255) DEFAULT NULL,
+    notifications TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Bot sozlamalari (kanal linki, admin/dasturchi username)
+CREATE TABLE IF NOT EXISTS bot_config (
+    `key` VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Admin foydalanuvchilar
 CREATE TABLE IF NOT EXISTS admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
