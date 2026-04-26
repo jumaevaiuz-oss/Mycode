@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS sections (
     sort_order INT DEFAULT 0,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_active_order (is_active, sort_order)
 );
 
 -- Darsliklar jadvali
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS lessons (
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_section_active (section_id, is_active, sort_order),
     FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
 );
 

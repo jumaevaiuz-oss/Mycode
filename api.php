@@ -52,6 +52,7 @@ function getSections(): void {
         }
     }
 
+    header('Cache-Control: public, max-age=60');
     echo json_encode(['success' => true, 'data' => $sections]);
 }
 
@@ -92,6 +93,7 @@ function getLessons(): void {
         }
     }
 
+    header('Cache-Control: public, max-age=30');
     echo json_encode([
         'success' => true,
         'section' => $section,
@@ -128,5 +130,6 @@ function getLesson(): void {
         $lesson['cover_url'] = null;
     }
 
+    header('Cache-Control: public, max-age=30');
     echo json_encode(['success' => true, 'data' => $lesson]);
 }
