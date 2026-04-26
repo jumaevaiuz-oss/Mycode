@@ -32,7 +32,7 @@
   <div class="banner-wrap">
     <div class="banner-slider" id="bannerSlider">
       <div class="banner-slide active">
-        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner1.jpg" loading="eager">
+        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner1.jpg" loading="eager" alt="">
         <div class="banner-overlay"></div>
         <div class="banner-content">
           <div class="banner-tag">✨ Xush kelibsiz</div>
@@ -41,7 +41,7 @@
         </div>
       </div>
       <div class="banner-slide">
-        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner2.jpg" loading="lazy">
+        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner2.jpg" loading="lazy" alt="">
         <div class="banner-overlay"></div>
         <div class="banner-content">
           <div class="banner-tag">🎯 Biznes</div>
@@ -50,7 +50,7 @@
         </div>
       </div>
       <div class="banner-slide">
-        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner3.jpg" loading="lazy">
+        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner3.jpg" loading="lazy" alt="">
         <div class="banner-overlay"></div>
         <div class="banner-content">
           <div class="banner-tag">🔥 Yangi</div>
@@ -59,7 +59,7 @@
         </div>
       </div>
       <div class="banner-slide">
-        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner4.jpg" loading="lazy">
+        <img class="banner-bg" src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/banner4.jpg" loading="lazy" alt="">
         <div class="banner-overlay"></div>
         <div class="banner-content">
           <div class="banner-tag">💎 Premium</div>
@@ -132,7 +132,7 @@
 
     <!-- Banner 16:9 -->
     <div style="margin-bottom:20px;border-radius:var(--radius);overflow:hidden;aspect-ratio:16/9;background:var(--bg-card2);position:relative">
-      <img src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/about_banner.jpg" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s" onload="this.style.opacity=1" onerror="this.parentElement.style.background='linear-gradient(135deg,#1a1200,#3d2e00)';this.style.display='none'">
+      <img src="https://6831eecaafce3.xvest3.ru/avtopilotminiapp/uploads/banner/about_banner.jpg" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s" onload="this.style.opacity=1" onerror="this.parentElement.style.background='linear-gradient(135deg,#1a1200,#3d2e00)';this.style.display='none'" alt="">
       <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 60%)"></div>
       <div style="position:absolute;bottom:16px;left:16px">
         <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px">AvtoPilot</div>
@@ -406,6 +406,8 @@ async function loadSections() {
       currentSections = json.data;
       renderSections(currentSections);
       document.getElementById('sectionsCount').textContent = currentSections.length;
+    } else {
+      document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ma\'lumot yuklashda xato</div></div></div>';
     }
   } catch(e) {
     document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ulanishda xato</div></div></div>';
@@ -419,7 +421,7 @@ function renderSections(sections) {
     return;
   }
   grid.innerHTML = sections.map(s => `
-    <div class="section-card" onclick="showLessons(${s.id},'${esc(s.name)}')">
+    <div class="section-card" onclick="showLessons(${s.id})">
       ${s.image_url ? `<img class="section-card-img" src="${s.image_url}" loading="lazy">` : `<div class="section-card-placeholder">📁</div>`}
       <div class="section-card-overlay"></div>
       <div class="section-card-shine"></div>
@@ -435,6 +437,10 @@ function filterSections() {
 
 // ===== LESSONS =====
 async function showLessons(sectionId, sectionName) {
+  if (sectionName === undefined) {
+    const sec = currentSections.find(s => s.id === sectionId);
+    sectionName = sec ? sec.name : '';
+  }
   currentSectionId = sectionId;
   document.getElementById('lessonsTitle').textContent = sectionName || '';
   document.getElementById('sectionHero').innerHTML = `<div class="section-hero"><div class="section-hero-name">${esc(sectionName)}</div><div class="skeleton" style="height:14px;width:80px;display:inline-block;margin-top:4px"></div></div>`;
@@ -468,6 +474,9 @@ async function showLessons(sectionId, sectionName) {
           </div>
           <div class="lesson-card-arrow">›</div>
         </div>`).join('');
+    } else {
+      document.getElementById('sectionHero').innerHTML = '';
+      document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ma\'lumot yuklashda xato</div></div>';
     }
   } catch(e) {
     document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>';
@@ -535,10 +544,25 @@ async function showLesson(lessonId, sectionId) {
       if (cover) { cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
       if (dc) { dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
       if (wb) { setTimeout(() => { wb.style.opacity = '1'; wb.style.transform = 'translateY(0)'; }, 250); }
+    } else {
+      const cover = document.getElementById('lessonCover');
+      const dc = document.getElementById('lessonDetailContent');
+      if (cover) { cover.innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>'; cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
+      if (dc) { dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Darslik topilmadi</div></div>'; dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
     }
   } catch(e) {
-    document.getElementById('lessonCover').innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>';
-    document.getElementById('lessonDetailContent').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>';
+    const cover = document.getElementById('lessonCover');
+    const dc = document.getElementById('lessonDetailContent');
+    if (cover) {
+      cover.innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>';
+      cover.style.opacity = '1';
+      cover.style.transform = 'translateY(0)';
+    }
+    if (dc) {
+      dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>';
+      dc.style.opacity = '1';
+      dc.style.transform = 'translateY(0)';
+    }
   }
 }
 
@@ -572,7 +596,7 @@ function showProfile() {
     <div style="text-align:center;padding:20px 0 30px">
       <div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--gold-light),var(--gold-dark));display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 16px;box-shadow:0 4px 24px rgba(200,168,75,.3)">👤</div>
       <div style="font-size:24px;font-weight:900;margin-bottom:4px">${esc(name)}</div>
-      <div style="font-size:14px;color:var(--gold)">${username}</div>
+      <div style="font-size:14px;color:var(--gold)">${esc(username)}</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center">
