@@ -285,6 +285,24 @@ let bannerTimer = null;
 let currentBanner = 0;
 const BANNER_COUNT = 4;
 
+// ===== CACHE (localStorage, TTL) =====
+const CACHE = {
+  _ttl: { sections: 5*60*1000, lessons: 3*60*1000, lesson: 2*60*1000 },
+  get(key) {
+    try {
+      const raw = localStorage.getItem('ap_c_' + key);
+      if (!raw) return null;
+      const { d, t } = JSON.parse(raw);
+      const ttl = this._ttl[key.split('_')[0]] ?? 3*60*1000;
+      if (Date.now() - t > ttl) { localStorage.removeItem('ap_c_' + key); return null; }
+      return d;
+    } catch { return null; }
+  },
+  set(key, data) {
+    try { localStorage.setItem('ap_c_' + key, JSON.stringify({ d: data, t: Date.now() })); } catch {}
+  }
+};
+
 // FAQ ma'lumotlari (keyinroq to'ldiriladi)
 const FAQ_DATA = [
   { q: "AvtoPilot nima?", a: "Avtopilot (Transformatsiya) — bu Anvar Abduqayum tomonidan yaratilgan 1 yillik kompleks dastur bo'lib, tadbirkorlarni \"qo'lda boshqariladigan biznes\"dan tizimli va avtomatlashtirilgan biznesga olib chiqishni maqsad qiladi.\n\nDastur 5 ta asosiy bosqichdan iborat:\n\n1️⃣ Miyyani ochish (1–2 oy) — Qayerdasiz va qayerga bormoqchisiz, shaxsiy va biznes maqsadlar, vision yaratish.\n\n2️⃣ Biznesni tizimlashtirish (3–4 oy) — Kirim-chiqim, HR, sizsiz ishlaydigan biznes modeli, KPI, CRM.\n\n3️⃣ Marketing va mijoz oqimi (5–6 oy) — Bozor tahlili, SMM, Telegram, YouTube orqali trafik, shaxsiy brend.\n\n4️⃣ Sotuv va moliya (7–8 oy) — Professional sotuv tizimlari, moliyaviy boshqaruv, daromadni 2–3 barobarga oshirish.\n\n5️⃣ Shaxsiy transformatsiya (11–12 oy) — Liderlik, work-life balance, investorlik, networking.\n\n🚀 Qo'shimcha: Biznes g'oyalar, jonli efirlar, kunlik insightlar, motivatsion kontent.\n\nXulosa: Avtopilot — bu oddiy kurs emas. Bu sizni tadbirkor sifatida to'liq transformatsiya qiladigan tizimli yo'l xaritasi." },
@@ -399,18 +417,27 @@ function showScreen(name) {
 
 // ===== SECTIONS =====
 async function loadSections() {
+  const cached = CACHE.get('sections');
+  if (cached) {
+    currentSections = cached;
+    renderSections(currentSections);
+    document.getElementById('sectionsCount').textContent = currentSections.length;
+  }
   try {
     const res = await fetch(API_URL + '?action=sections');
     const json = await res.json();
     if (json.success) {
       currentSections = json.data;
+      CACHE.set('sections', currentSections);
       renderSections(currentSections);
       document.getElementById('sectionsCount').textContent = currentSections.length;
-    } else {
+    } else if (!cached) {
       document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ma\'lumot yuklashda xato</div></div></div>';
     }
   } catch(e) {
-    document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ulanishda xato</div></div></div>';
+    if (!cached) {
+      document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ulanishda xato</div></div></div>';
+    }
   }
 }
 
@@ -436,6 +463,24 @@ function filterSections() {
 }
 
 // ===== LESSONS =====
+function renderLessons(lessons, sectionId, sectionName) {
+  document.getElementById('sectionHero').innerHTML = `<div class="section-hero"><div class="section-hero-name">${esc(sectionName)}</div><div class="section-hero-count">${lessons.length} ta darslik</div></div>`;
+  if (!lessons.length) {
+    document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">📚</div><div class="empty-text">Hali darslik yo\'q</div><div class="empty-sub">Tez orada qo\'shiladi</div></div>';
+    return;
+  }
+  document.getElementById('lessonsList').innerHTML = lessons.map((l, i) => `
+    <div class="lesson-card" onclick="showLesson(${l.id},${sectionId})">
+      <div class="lesson-card-thumb">${l.cover_url ? `<img src="${l.cover_url}" loading="lazy" style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">` : '📖'}</div>
+      <div class="lesson-card-info">
+        <div class="lesson-card-num">Darslik ${i+1}</div>
+        <div class="lesson-card-title">${esc(l.title)}</div>
+        ${l.description ? `<div class="lesson-card-desc">${esc(l.description)}</div>` : ''}
+      </div>
+      <div class="lesson-card-arrow">›</div>
+    </div>`).join('');
+}
+
 async function showLessons(sectionId, sectionName) {
   if (sectionName === undefined) {
     const sec = currentSections.find(s => s.id === sectionId);
@@ -443,6 +488,18 @@ async function showLessons(sectionId, sectionName) {
   }
   currentSectionId = sectionId;
   document.getElementById('lessonsTitle').textContent = sectionName || '';
+
+  const cached = CACHE.get('lessons_' + sectionId);
+  if (cached) {
+    renderLessons(cached, sectionId, sectionName);
+    showScreen('lessons');
+    fetch(API_URL + '?action=lessons&section_id=' + sectionId)
+      .then(r => r.json())
+      .then(json => { if (json.success) CACHE.set('lessons_' + sectionId, json.data); })
+      .catch(() => {});
+    return;
+  }
+
   document.getElementById('sectionHero').innerHTML = `<div class="section-hero"><div class="section-hero-name">${esc(sectionName)}</div><div class="skeleton" style="height:14px;width:80px;display:inline-block;margin-top:4px"></div></div>`;
   document.getElementById('lessonsList').innerHTML = Array(4).fill('').map(() => `
     <div class="sk-card">
@@ -458,22 +515,8 @@ async function showLessons(sectionId, sectionName) {
     const res = await fetch(API_URL + '?action=lessons&section_id=' + sectionId);
     const json = await res.json();
     if (json.success) {
-      const lessons = json.data;
-      document.getElementById('sectionHero').innerHTML = `<div class="section-hero"><div class="section-hero-name">${esc(sectionName)}</div><div class="section-hero-count">${lessons.length} ta darslik</div></div>`;
-      if (!lessons.length) {
-        document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">📚</div><div class="empty-text">Hali darslik yo\'q</div><div class="empty-sub">Tez orada qo\'shiladi</div></div>';
-        return;
-      }
-      document.getElementById('lessonsList').innerHTML = lessons.map((l, i) => `
-        <div class="lesson-card" onclick="showLesson(${l.id},${sectionId})">
-          <div class="lesson-card-thumb">${l.cover_url ? `<img src="${l.cover_url}" loading="lazy" style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">` : '📖'}</div>
-          <div class="lesson-card-info">
-            <div class="lesson-card-num">Darslik ${i+1}</div>
-            <div class="lesson-card-title">${esc(l.title)}</div>
-            ${l.description ? `<div class="lesson-card-desc">${esc(l.description)}</div>` : ''}
-          </div>
-          <div class="lesson-card-arrow">›</div>
-        </div>`).join('');
+      CACHE.set('lessons_' + sectionId, json.data);
+      renderLessons(json.data, sectionId, sectionName);
     } else {
       document.getElementById('sectionHero').innerHTML = '';
       document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ma\'lumot yuklashda xato</div></div>';
@@ -484,10 +527,45 @@ async function showLessons(sectionId, sectionName) {
 }
 
 // ===== LESSON DETAIL =====
+function renderLesson(l) {
+  document.getElementById('lessonCover').innerHTML = l.cover_url
+    ? `<img class="lesson-cover" src="${l.cover_url}" onload="this.style.opacity='1';this.style.transform='translateY(0)'">`
+    : '<div class="lesson-cover-placeholder">📖</div>';
+  const isSaved = savedLessons.includes(l.id);
+  document.getElementById('lessonDetailContent').innerHTML = `
+    <div class="lesson-detail-section">${esc(l.section_name)}</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <div class="lesson-detail-title" style="margin-bottom:0;flex:1">${esc(l.title)}</div>
+      <button onclick="toggleSave(${l.id})" id="saveBtn" style="background:${isSaved?'rgba(200,168,75,.15)':'var(--bg-card2)'};border:1.5px solid ${isSaved?'var(--gold)':'var(--border)'};border-radius:12px;padding:8px 14px;color:${isSaved?'var(--gold)':'var(--text-muted)'};font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s;font-family:inherit">
+        ${isSaved?'❤️ Saqlangan':'🤍 Saqlash'}
+      </button>
+    </div>
+    ${l.description ? `<div class="lesson-detail-divider"></div><div class="lesson-detail-desc-label">Darslik haqida</div><div class="lesson-detail-desc">${esc(l.description)}</div>` : ''}`;
+  if (l.telegram_link) {
+    document.getElementById('watchBtn').onclick = () => {
+      window.Telegram?.WebApp?.openTelegramLink
+        ? window.Telegram.WebApp.openTelegramLink(l.telegram_link)
+        : window.open(l.telegram_link, '_blank');
+    };
+    document.getElementById('watchBtn').style.opacity = '1';
+    document.getElementById('watchBtn').disabled = false;
+    document.getElementById('watchBtn').innerHTML = '<span>▶</span> Tomosha qilish';
+  } else {
+    document.getElementById('watchBtn').style.opacity = '0.4';
+    document.getElementById('watchBtn').disabled = true;
+    document.getElementById('watchBtn').innerHTML = '<span>▶</span> Link qo\'shilmagan';
+  }
+  const cover = document.getElementById('lessonCover');
+  const dc    = document.getElementById('lessonDetailContent');
+  const wb    = document.querySelector('.watch-btn-wrap');
+  if (cover) { cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
+  if (dc)    { dc.style.opacity    = '1'; dc.style.transform    = 'translateY(0)'; }
+  if (wb)    { setTimeout(() => { wb.style.opacity = '1'; wb.style.transform = 'translateY(0)'; }, 250); }
+}
+
 async function showLesson(lessonId, sectionId) {
   document.getElementById('backToLessons').onclick = () => showLessons(sectionId, document.getElementById('lessonsTitle').textContent);
 
-  // Har safar reset
   function resetEl(el, delay) {
     if (!el) return;
     el.style.transition = 'none';
@@ -505,64 +583,34 @@ async function showLesson(lessonId, sectionId) {
   document.getElementById('lessonCover').innerHTML = '<div class="lesson-cover-placeholder" style="background:var(--bg-card2)"></div>';
   document.getElementById('lessonDetailContent').innerHTML = '';
   showScreen('lesson');
+
+  const cached = CACHE.get('lesson_' + lessonId);
+  if (cached) {
+    renderLesson(cached);
+    fetch(API_URL + '?action=lesson&id=' + lessonId)
+      .then(r => r.json())
+      .then(json => { if (json.success) CACHE.set('lesson_' + lessonId, json.data); })
+      .catch(() => {});
+    return;
+  }
+
   try {
     const res = await fetch(API_URL + '?action=lesson&id=' + lessonId);
     const json = await res.json();
     if (json.success) {
-      const l = json.data;
-      document.getElementById('lessonCover').innerHTML = l.cover_url
-        ? `<img class="lesson-cover" src="${l.cover_url}" onload="this.style.opacity='1';this.style.transform='translateY(0)'">`
-        : '<div class="lesson-cover-placeholder">📖</div>';
-      const isSaved = savedLessons.includes(lessonId);
-      document.getElementById('lessonDetailContent').innerHTML = `
-        <div class="lesson-detail-section">${esc(l.section_name)}</div>
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px">
-          <div class="lesson-detail-title" style="margin-bottom:0;flex:1">${esc(l.title)}</div>
-          <button onclick="toggleSave(${lessonId})" id="saveBtn" style="background:${isSaved?'rgba(200,168,75,.15)':'var(--bg-card2)'};border:1.5px solid ${isSaved?'var(--gold)':'var(--border)'};border-radius:12px;padding:8px 14px;color:${isSaved?'var(--gold)':'var(--text-muted)'};font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s;font-family:inherit">
-            ${isSaved?'❤️ Saqlangan':'🤍 Saqlash'}
-          </button>
-        </div>
-        ${l.description ? `<div class="lesson-detail-divider"></div><div class="lesson-detail-desc-label">Darslik haqida</div><div class="lesson-detail-desc">${esc(l.description)}</div>` : ''}`;
-      if (l.telegram_link) {
-        document.getElementById('watchBtn').onclick = () => {
-          window.Telegram?.WebApp?.openTelegramLink
-            ? window.Telegram.WebApp.openTelegramLink(l.telegram_link)
-            : window.open(l.telegram_link, '_blank');
-        };
-        document.getElementById('watchBtn').style.opacity = '1';
-        document.getElementById('watchBtn').disabled = false;
-        document.getElementById('watchBtn').innerHTML = '<span>▶</span> Tomosha qilish';
-      } else {
-        document.getElementById('watchBtn').style.opacity = '0.4';
-        document.getElementById('watchBtn').disabled = true;
-        document.getElementById('watchBtn').innerHTML = '<span>▶</span> Link qo\'shilmagan';
-      }
-      // Animate after all content is set
-      const cover = document.getElementById('lessonCover');
-      const dc = document.getElementById('lessonDetailContent');
-      const wb = document.querySelector('.watch-btn-wrap');
-      if (cover) { cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
-      if (dc) { dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
-      if (wb) { setTimeout(() => { wb.style.opacity = '1'; wb.style.transform = 'translateY(0)'; }, 250); }
+      CACHE.set('lesson_' + lessonId, json.data);
+      renderLesson(json.data);
     } else {
       const cover = document.getElementById('lessonCover');
-      const dc = document.getElementById('lessonDetailContent');
+      const dc    = document.getElementById('lessonDetailContent');
       if (cover) { cover.innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>'; cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
-      if (dc) { dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Darslik topilmadi</div></div>'; dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
+      if (dc)    { dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Darslik topilmadi</div></div>'; dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
     }
   } catch(e) {
     const cover = document.getElementById('lessonCover');
-    const dc = document.getElementById('lessonDetailContent');
-    if (cover) {
-      cover.innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>';
-      cover.style.opacity = '1';
-      cover.style.transform = 'translateY(0)';
-    }
-    if (dc) {
-      dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>';
-      dc.style.opacity = '1';
-      dc.style.transform = 'translateY(0)';
-    }
+    const dc    = document.getElementById('lessonDetailContent');
+    if (cover) { cover.innerHTML = '<div class="lesson-cover-placeholder">⚠️</div>'; cover.style.opacity = '1'; cover.style.transform = 'translateY(0)'; }
+    if (dc)    { dc.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>'; dc.style.opacity = '1'; dc.style.transform = 'translateY(0)'; }
   }
 }
 
