@@ -305,6 +305,7 @@ function handleCallback(array $cb): void {
         $db = getDB();
         $db->prepare("UPDATE sections SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Bo'lim o'chirildi.");
+        sleep(1);
         editSectionsList($chatId, $msgId);
         return;
     }
@@ -366,6 +367,7 @@ function handleCallback(array $cb): void {
         $db = getDB();
         $db->prepare("UPDATE lessons SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Darslik o'chirildi.");
+        sleep(1);
         editSectionsForLessons($chatId, $msgId);
         return;
     }
@@ -444,6 +446,7 @@ _/cancel_");
         $id = (int)str_replace('confirm_del_post_', '', $data);
         getDB()->prepare("UPDATE posts SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Post o'chirildi.");
+        sleep(1);
         editPostsList($chatId, $msgId);
         return;
     }
