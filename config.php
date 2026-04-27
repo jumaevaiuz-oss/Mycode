@@ -1,46 +1,59 @@
 <?php
-// config.php - Bot konfiguratsiyasi
-// MUHIM: Bu faylni serverga yuklaganingizdan keyin quyidagi qiymatlarni to'ldiring!
+// config.php - Asosiy sozlamalar
 
-// ============================================================
-//  BOT SOZLAMALARI
-// ============================================================
-define('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE');           // @BotFather dan olingan token
-define('BOT_URL',   'https://api.telegram.org/bot' . BOT_TOKEN);
-define('SITE_URL',  'https://your-domain.com');        // Saytingiz manzili (https bilan)
+// Xatolarni log qilish
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/bot_error.log');
 
-// ============================================================
-//  ADMIN SOZLAMALARI
-// ============================================================
-define('ADMIN_IDS',       [123456789]);                // Admin Telegram ID raqamlar (massiv)
-define('CHANNEL_LINK',    'https://t.me/your_channel'); // Rasmiy kanal linki
-define('ADMIN_USERNAME',  'your_admin_username');       // Admin username (@ belgisisiz)
-define('DEV_USERNAME',    'your_dev_username');          // Dasturchi username (@ belgisisiz)
+define('DB_HOST', 'localhost');
+define('DB_NAME', '');         // O'zgartiring
+define('DB_USER', '');         // O'zgartiring
+define('DB_PASS', '');         // O'zgartiring
 
-// ============================================================
-//  FAYL YUKLASH
-// ============================================================
+define('BOT_TOKEN', '');       // BotFather dan olgan token
+define('BOT_URL', 'https://api.telegram.org/bot' . BOT_TOKEN);
+define('WEBHOOK_SECRET', '');  // Xavfsiz tasodifiy so'z (masalan: openssl rand -hex 32)
+
+define('SITE_URL', 'https://6831eecaafce3.xvest3.ru/avtopilotminiapp');
 define('UPLOAD_DIR', __DIR__ . '/uploads/');
+define('UPLOAD_URL', SITE_URL . '/uploads/');
 
-// ============================================================
-//  MA'LUMOTLAR BAZASI
-// ============================================================
-define('DB_HOST',    'localhost');
-define('DB_NAME',    'your_database_name');
-define('DB_USER',    'your_database_user');
-define('DB_PASS',    'your_database_password');
-define('DB_CHARSET', 'utf8mb4');
+// Admin Telegram ID lari
+define('ADMIN_IDS', [
+    0, // Admin Telegram ID (raqam bilan almashtiring)
+]);
 
+// Fallback qiymatlar (bot_config jadvalidan o'qiladi dinamik)
+define('CHANNEL_LINK',   'https://t.me/jumaev_ai');
+define('ADMIN_USERNAME', 'aijumaev');
+define('DEV_USERNAME',   'developerCC');
+
+// DB ulanish
 function getDB(): PDO {
     static $pdo = null;
     if ($pdo === null) {
-        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
-        $options = [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ];
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        try {
+            $pdo = new PDO(
+                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+                DB_USER,
+                DB_PASS,
+                [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]
+            );
+        } catch (PDOException $e) {
+            error_log('DB ulanish xatosi: ' . $e->getMessage());
+            http_response_code(500);
+            die(json_encode(['error' => 'DB ulanmadi']));
+        }
     }
     return $pdo;
+}
+
+// Uploads papkalarini yaratish
+foreach (['', 'sections/', 'lessons/', 'posts/', 'banner/'] as $sub) {
+    $dir = UPLOAD_DIR . $sub;
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
 }

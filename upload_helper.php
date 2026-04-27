@@ -1,7 +1,7 @@
 <?php
-// upload_helper.php - Telegram'dan fayl yuklash yordamchi funksiyasi
+// upload_helper.php - Rasm yuklash yordamchi
 
-function downloadTelegramFileTo(string $fileId, string $subDir): ?string {
+function downloadTelegramFileTo(string $fileId, string $type): ?string {
     // Telegram'dan fayl yo'lini olish
     $ch = curl_init(BOT_URL . '/getFile');
     curl_setopt_array($ch, [
@@ -9,47 +9,46 @@ function downloadTelegramFileTo(string $fileId, string $subDir): ?string {
         CURLOPT_POSTFIELDS     => ['file_id' => $fileId],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_TIMEOUT        => 15,
     ]);
-    $res = curl_exec($ch);
+    $response = curl_exec($ch);
     curl_close($ch);
 
-    if (!$res) return null;
+    if (!$response) return null;
 
-    $data = json_decode($res, true);
-    if (!($data['ok'] ?? false) || !isset($data['result']['file_path'])) {
-        return null;
+    $data = json_decode($response, true);
+    if (empty($data['ok']) || empty($data['result']['file_path'])) return null;
+
+    $tgPath = $data['result']['file_path'];
+    $ext    = strtolower(pathinfo($tgPath, PATHINFO_EXTENSION));
+
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+        $ext = 'jpg';
     }
 
-    $filePath = $data['result']['file_path'];
-    $ext      = strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) ?: 'jpg';
-    $fileName = uniqid('img_', true) . '.' . $ext;
+    $fileName  = uniqid('img_', true) . '.' . $ext;
+    $folder    = UPLOAD_DIR . $type . '/';
 
-    $dir = UPLOAD_DIR . $subDir . '/';
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+    if (!is_dir($folder)) {
+        mkdir($folder, 0755, true);
     }
 
     // Faylni yuklab olish
-    $fileUrl = 'https://api.telegram.org/file/bot' . BOT_TOKEN . '/' . $filePath;
-    $ch = curl_init($fileUrl);
-    curl_setopt_array($ch, [
+    $fileUrl = 'https://api.telegram.org/file/bot' . BOT_TOKEN . '/' . $tgPath;
+    $ch2 = curl_init($fileUrl);
+    curl_setopt_array($ch2, [
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_TIMEOUT        => 60,
-        CURLOPT_FOLLOWLOCATION => true,
     ]);
-    $content = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $content  = curl_exec($ch2);
+    $httpCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+    curl_close($ch2);
 
-    if (!$content || $httpCode !== 200) {
-        return null;
-    }
+    if (!$content || $httpCode !== 200) return null;
 
-    if (file_put_contents($dir . $fileName, $content) === false) {
-        return null;
-    }
+    if (file_put_contents($folder . $fileName, $content) === false) return null;
 
     return $fileName;
 }

@@ -1,6 +1,13 @@
 <?php
 // bot.php - Avtopilot Bot (To'liq versiya)
 
+// PHP 7.x uchun polyfill (str_starts_with PHP 8.0 da qo'shilgan)
+if (!function_exists('str_starts_with')) {
+    function str_starts_with(string $haystack, string $needle): bool {
+        return $needle === '' || strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+}
+
 // Timeout va memory sozlamalari
 set_time_limit(0);
 ini_set('memory_limit', '256M');
@@ -16,11 +23,17 @@ if (!$update) exit;
 // Telegramga darhol 200 OK qaytaramiz (timeout oldini olish)
 http_response_code(200);
 header('Content-Type: application/json');
+header('Connection: close');
+header('Content-Length: ' . ob_get_length());
 echo json_encode(['ok' => true]);
 
-// Output bufferingni yopamiz
-if (ob_get_level()) ob_end_flush();
-flush();
+// PHP-FPM uchun to'g'ri ulanishni yopish
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+} else {
+    if (ob_get_level()) ob_end_flush();
+    flush();
+}
 
 // Keyin botni ishlatamiz
 $message  = $update['message'] ?? null;

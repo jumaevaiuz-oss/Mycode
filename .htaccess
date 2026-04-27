@@ -1,0 +1,40 @@
+# AvtoPilot Mini App - .htaccess
+
+# Xatolarni yashirish
+php_flag display_errors off
+php_flag log_errors on
+
+# Log fayllarni himoya qilish
+<Files "*.log">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# setup_webhook.php ga tashqi kirishni cheklash (kalit orqali ishlaydi)
+# Agar ishlatib bo'lsangiz quyidagini yoqing:
+# <Files "setup_webhook.php">
+#     Order allow,deny
+#     Deny from all
+# </Files>
+
+# uploads papkasida PHP ishlamasligi uchun
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^/avtopilotminiapp/uploads/
+    RewriteRule \.(php|php3|php4|php5|phtml)$ - [F,L]
+</IfModule>
+
+# Gzip siqish
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# Kesh sozlamalari
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 7 days"
+    ExpiresByType image/png  "access plus 7 days"
+    ExpiresByType image/webp "access plus 7 days"
+    ExpiresByType text/css   "access plus 1 day"
+    ExpiresByType application/javascript "access plus 1 day"
+</IfModule>
