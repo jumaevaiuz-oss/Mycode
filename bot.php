@@ -305,7 +305,6 @@ function handleCallback(array $cb): void {
         $db = getDB();
         $db->prepare("UPDATE sections SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Bo'lim o'chirildi.");
-        sleep(1);
         editSectionsList($chatId, $msgId);
         return;
     }
@@ -367,7 +366,6 @@ function handleCallback(array $cb): void {
         $db = getDB();
         $db->prepare("UPDATE lessons SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Darslik o'chirildi.");
-        sleep(1);
         editSectionsForLessons($chatId, $msgId);
         return;
     }
@@ -446,7 +444,6 @@ _/cancel_");
         $id = (int)str_replace('confirm_del_post_', '', $data);
         getDB()->prepare("UPDATE posts SET is_active=0 WHERE id=?")->execute([$id]);
         editMessage($chatId, $msgId, "✅ Post o'chirildi.");
-        sleep(1);
         editPostsList($chatId, $msgId);
         return;
     }
@@ -1047,6 +1044,8 @@ function sendMessage(int $chatId, string $text, ?array $keyboard = null, string 
         CURLOPT_POSTFIELDS     => $params,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
     ]);
     $res = curl_exec($ch);
     curl_close($ch);
@@ -1069,6 +1068,8 @@ function editMessage(int $chatId, int $msgId, string $text, ?array $keyboard = n
         CURLOPT_POSTFIELDS     => $params,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
     ]);
     curl_exec($ch);
     curl_close($ch);
@@ -1081,6 +1082,8 @@ function answerCallback(string $id): void {
         CURLOPT_POSTFIELDS     => ['callback_query_id' => $id],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT        => 5,
+        CURLOPT_CONNECTTIMEOUT => 3,
     ]);
     curl_exec($ch);
     curl_close($ch);
