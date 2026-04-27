@@ -654,6 +654,8 @@ async function showSaved() {
       </div>
     </div>`).join('');
   const lessons = [];
+  const validIds = [];
+  let networkError = false;
   for (const id of savedLessons) {
     try {
       const ctrl = new AbortController();
@@ -661,11 +663,17 @@ async function showSaved() {
       const res = await fetch(API_URL + '?action=lesson&id=' + id, { signal: ctrl.signal });
       clearTimeout(timer);
       const json = await res.json();
-      if (json.success) lessons.push(json.data);
-    } catch(e) {}
+      if (json.success) { lessons.push(json.data); validIds.push(id); }
+    } catch(e) { networkError = true; }
+  }
+  if (validIds.length !== savedLessons.length) {
+    savedLessons = validIds;
+    localStorage.setItem('ap_saved', JSON.stringify(savedLessons));
   }
   if (!lessons.length) {
-    content.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Yuklanmadi</div><div class="empty-sub">Qayta urinib ko\'ring</div></div>';
+    content.innerHTML = networkError
+      ? '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Yuklanmadi</div><div class="empty-sub">Qayta urinib ko\'ring</div></div>'
+      : '<div class="empty"><div class="empty-icon">🤍</div><div class="empty-text">Saqlangan yo\'q</div><div class="empty-sub">Darslikni ochib ❤️ Saqlash ni bosing</div></div>';
     return;
   }
   content.innerHTML = `
