@@ -368,9 +368,12 @@ function handleCallback(array $cb): void {
         editMessage($chatId, $msgId, "📣 Barcha foydalanuvchilarga yuboriladigan xabarni yozing:\n\n_Bekor qilish uchun /cancel_");
         return;
     }
-    if (str_starts_with($data, 'confirm_broadcast_')) {
-        $text = base64_decode(str_replace('confirm_broadcast_', '', $data));
-        doBroadcast($chatId, $msgId, $text);
+    if ($data === 'confirm_broadcast') {
+        $bState = getState($userId);
+        if ($bState && $bState['state'] === 'broadcast_confirm' && isset($bState['data']['text'])) {
+            clearState($userId);
+            doBroadcast($chatId, $msgId, $bState['data']['text']);
+        }
         return;
     }
     if ($data === 'cancel_broadcast') {
@@ -565,9 +568,9 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
 
         // Broadcast xabari
         case 'waiting_broadcast':
-            $encoded = base64_encode($text);
+            setState($userId, 'broadcast_confirm', ['text' => $text]);
             $kb = ['inline_keyboard' => [[
-                ['text' => '✅ Yuborish', 'callback_data' => "confirm_broadcast_{$encoded}"],
+                ['text' => '✅ Yuborish', 'callback_data' => 'confirm_broadcast'],
                 ['text' => '❌ Bekor', 'callback_data' => 'cancel_broadcast'],
             ]]];
             sendMessage($chatId, "📣 *Preview:*\n\n{$text}\n\n---\nBarcha foydalanuvchilarga yuborilsin?", $kb);
@@ -1051,12 +1054,6 @@ function answerCallback(string $id): void {
     curl_close($ch);
 }
 
-// Foydalanuvchi tugmalarini qayta ishlash (message handler ichida)
-// Bu yerda handleUserButton chaqiriladi
-function routeUserMessage(int $chatId, int $userId, string $text): void {
-    handleUserButton($chatId, $userId, $text);
-}
-
 // ============================================================
 //  POSTS FUNKSIYALARI
 // ============================================================
@@ -1090,7 +1087,7 @@ function editPostMenu(int $chatId, int $msgId, int $id): void {
             ['text' => '📄 Matn', 'callback_data' => "content_post_{$id}"],
         ],
         [['text' => '🖼 Rasm', 'callback_data' => "photo_post_{$id}"]],
-        [['text' => '🗑 O'chirish', 'callback_data' => "delete_post_{$id}"]],
+        [['text' => '🗑 O\'chirish', 'callback_data' => "delete_post_{$id}"]],
         [['text' => '🔙 Orqaga', 'callback_data' => 'posts_menu']],
     ]];
     editMessage($chatId, $msgId, $text, $kb);
