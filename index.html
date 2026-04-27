@@ -308,17 +308,18 @@ const FAQ_DATA = [
 window.Telegram?.WebApp?.ready();
 window.Telegram?.WebApp?.expand();
 
-window.addEventListener('load', () => {
+function hideLoading() {
+  const l = document.getElementById('loading');
+  l.style.transition = 'opacity .25s ease';
+  l.style.opacity = '0';
+  setTimeout(() => l.style.display = 'none', 250);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
   initBanner();
   initFaq();
-  loadSections();
+  loadSections().finally(hideLoading);
   loadPosts();
-  const l = document.getElementById('loading');
-  l.style.transition = 'opacity .2s ease';
-  setTimeout(() => {
-    l.style.opacity = '0';
-    setTimeout(() => l.style.display = 'none', 200);
-  }, 200);
 });
 
 // ===== BANNER =====
@@ -338,6 +339,10 @@ function startBannerTimer() {
   }, 3500);
 }
 
+document.addEventListener('visibilitychange', () => {
+  document.hidden ? clearInterval(bannerTimer) : startBannerTimer();
+});
+
 function goToBanner(idx) {
   currentBanner = idx;
   updateBanner();
@@ -351,7 +356,7 @@ function updateBanner() {
 
 // Swipe uchun
 let touchStartX = 0;
-document.getElementById('bannerSlider').addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+document.getElementById('bannerSlider').addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
 document.getElementById('bannerSlider').addEventListener('touchend', e => {
   const diff = touchStartX - e.changedTouches[0].clientX;
   if (Math.abs(diff) > 50) {
@@ -410,8 +415,14 @@ function showScreen(name) {
 
 // ===== SECTIONS =====
 async function loadSections() {
+  document.getElementById('sectionsGrid').innerHTML = Array(6).fill('').map(() =>
+    `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:20px;aspect-ratio:1;overflow:hidden"><div class="skeleton" style="width:100%;height:100%"></div></div>`
+  ).join('');
   try {
-    const res = await fetch(API_URL + '?action=sections');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(API_URL + '?action=sections', { signal: ctrl.signal });
+    clearTimeout(timer);
     const json = await res.json();
     if (json.success) {
       currentSections = json.data;
@@ -442,7 +453,10 @@ function renderSections(sections) {
 // ===== POSTS =====
 async function loadPosts() {
   try {
-    const res = await fetch(API_URL + '?action=posts');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(API_URL + '?action=posts', { signal: ctrl.signal });
+    clearTimeout(timer);
     const json = await res.json();
     if (!json.success || !json.data.length) return;
     const posts = json.data;
@@ -502,7 +516,10 @@ async function showLessons(sectionId, sectionName) {
     </div>`).join('');
   showScreen('lessons');
   try {
-    const res = await fetch(API_URL + '?action=lessons&section_id=' + sectionId);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(API_URL + '?action=lessons&section_id=' + sectionId, { signal: ctrl.signal });
+    clearTimeout(timer);
     const json = await res.json();
     if (json.success) {
       const lessons = json.data;
@@ -550,7 +567,10 @@ async function showLesson(lessonId, sectionId) {
   document.getElementById('lessonDetailContent').innerHTML = '';
   showScreen('lesson');
   try {
-    const res = await fetch(API_URL + '?action=lesson&id=' + lessonId);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(API_URL + '?action=lesson&id=' + lessonId, { signal: ctrl.signal });
+    clearTimeout(timer);
     const json = await res.json();
     if (json.success) {
       const l = json.data;
@@ -589,7 +609,11 @@ async function showLesson(lessonId, sectionId) {
         document.getElementById('watchBtn').innerHTML = '<span>▶</span> Link qo\'shilmagan';
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    document.getElementById('lessonDetailContent').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div><div class="empty-sub">Qayta urinib ko\'ring</div></div>';
+    const wb = document.querySelector('.watch-btn-wrap');
+    if (wb) { wb.style.opacity = '1'; wb.style.transform = 'translateY(0)'; }
+  }
 }
 
 // ===== SAVED =====
