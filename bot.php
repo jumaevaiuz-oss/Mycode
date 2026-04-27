@@ -602,9 +602,28 @@ _/cancel_");
             $stmt = $db->prepare("INSERT INTO posts (title, content, sort_order) VALUES (?,?,?)");
             $stmt->execute([$data['title'], $text, $cnt + 1]);
             $newId = $db->lastInsertId();
-            clearState($userId);
-            sendMessage($chatId, "Post qo'shildi! Endi rasmini yuboring yoki /cancel");
-            setState($userId, 'waiting_post_photo', ['post_id' => $newId]);
+            setState($userId, 'waiting_post_button_name', ['post_id' => $newId]);
+            sendMessage($chatId, "3️⃣ Tugma bo'lsinmi? Nomini yuboring yoki /skip bosib o'tkazib yuboring
+
+⚠️ Qisqacha: Telegram link bo'lsa Telegram ochiladi, boshqa link (Instagram, YouTube va h.k.) bo'lsa o'sha platforma ochiladi.");
+            break;
+
+        case 'waiting_post_button_name':
+            if ($text === '/skip') {
+                setState($userId, 'waiting_post_photo', ['post_id' => $data['post_id']]);
+                sendMessage($chatId, "Post qo'shildi! Endi rasmini yuboring yoki /cancel");
+            } else {
+                setState($userId, 'waiting_post_button_link', ['post_id' => $data['post_id'], 'button_name' => $text]);
+                sendMessage($chatId, "🔗 Tugma uchun havola yuboring:
+
+_/cancel_");
+            }
+            break;
+
+        case 'waiting_post_button_link':
+            getDB()->prepare("UPDATE posts SET button_text=?, button_url=? WHERE id=?")->execute([$data['button_name'], $text, $data['post_id']]);
+            setState($userId, 'waiting_post_photo', ['post_id' => $data['post_id']]);
+            sendMessage($chatId, "✅ Tugma qo'shildi! Endi rasmini yuboring yoki /cancel");
             break;
 
         case 'waiting_rename_post':

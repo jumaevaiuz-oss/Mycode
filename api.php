@@ -125,7 +125,7 @@ function getLesson(): void {
 function getPosts(): void {
     $db   = getDB();
     $stmt = $db->query("
-        SELECT id, title, content, image_path, created_at
+        SELECT id, title, content, image_path, button_text, button_url, created_at
         FROM posts
         WHERE is_active = 1
         ORDER BY sort_order DESC, created_at DESC
