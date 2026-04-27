@@ -230,6 +230,14 @@
   </div>
 </div>
 
+<!-- SAVED -->
+<div id="screen-saved" class="screen">
+  <div class="header">
+    <div class="header-inner"><span class="logo-text">Saqlangan</span></div>
+  </div>
+  <div class="lessons-content" id="savedContent"></div>
+</div>
+
 <!-- PROFILE -->
 <div id="screen-profile" class="screen">
   <div class="header">
@@ -629,12 +637,63 @@ function toggleSave(lessonId) {
   btn.style.color = isSaved ? 'var(--gold)' : 'var(--text-muted)';
 }
 
-function showSaved() {
-  document.getElementById('sectionsGrid').innerHTML = savedLessons.length
-    ? `<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">❤️</div><div class="empty-text">Saqlangan: ${savedLessons.length} ta</div><div class="empty-sub">Darslik ichida ❤️ Saqlash ni bosing</div></div></div>`
-    : '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">🤍</div><div class="empty-text">Saqlangan yo\'q</div><div class="empty-sub">Darslikni ochib ❤️ Saqlash ni bosing</div></div></div>';
-  document.getElementById('searchInput').value = '';
-  showScreen('home');
+async function showSaved() {
+  showScreen('saved');
+  const content = document.getElementById('savedContent');
+  if (!savedLessons.length) {
+    content.innerHTML = '<div class="empty"><div class="empty-icon">🤍</div><div class="empty-text">Saqlangan yo\'q</div><div class="empty-sub">Darslikni ochib ❤️ Saqlash ni bosing</div></div>';
+    return;
+  }
+  content.innerHTML = Array(savedLessons.length).fill('').map(() => `
+    <div class="sk-card">
+      <div class="sk-thumb skeleton"></div>
+      <div class="sk-info">
+        <div class="sk-line w40 skeleton"></div>
+        <div class="sk-line w100 h16 skeleton"></div>
+        <div class="sk-line w70 skeleton"></div>
+      </div>
+    </div>`).join('');
+  const lessons = [];
+  for (const id of savedLessons) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(API_URL + '?action=lesson&id=' + id, { signal: ctrl.signal });
+      clearTimeout(timer);
+      const json = await res.json();
+      if (json.success) lessons.push(json.data);
+    } catch(e) {}
+  }
+  if (!lessons.length) {
+    content.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Yuklanmadi</div><div class="empty-sub">Qayta urinib ko\'ring</div></div>';
+    return;
+  }
+  content.innerHTML = `
+    <div class="section-hero" style="margin-bottom:16px">
+      <div class="section-hero-name">Saqlangan</div>
+      <div class="section-hero-count">${lessons.length} ta darslik</div>
+    </div>
+    <div class="lessons-list">
+      ${lessons.map(l => `
+        <div class="lesson-card" onclick="showLessonFromSaved(${l.id})">
+          <div class="lesson-card-thumb">${l.cover_url ? `<img src="${l.cover_url}" loading="lazy" style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">` : '📖'}</div>
+          <div class="lesson-card-info">
+            <div class="lesson-card-num">${esc(l.section_name)}</div>
+            <div class="lesson-card-title">${esc(l.title)}</div>
+            ${l.description ? `<div class="lesson-card-desc">${esc(l.description)}</div>` : ''}
+          </div>
+          <div class="lesson-card-arrow">›</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function showLessonFromSaved(lessonId) {
+  showLesson(lessonId, null);
+  document.getElementById('backToLessons').onclick = () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('nav-saved').classList.add('active');
+    showSaved();
+  };
 }
 
 // ===== PROFILE =====
