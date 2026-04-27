@@ -445,7 +445,8 @@ async function loadSections() {
       document.getElementById('sectionsCount').textContent = currentSections.length;
     }
   } catch(e) {
-    document.getElementById('sectionsGrid').innerHTML = '<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Ulanishda xato</div></div></div>';
+    const offline = !navigator.onLine;
+    document.getElementById('sectionsGrid').innerHTML = `<div style="grid-column:span 2"><div class="empty"><div class="empty-icon">${offline?'🛜':'⚠️'}</div><div class="empty-text">${offline?'Internet yo\'q':'Ulanishda xato'}</div></div></div>`;
   }
 }
 
@@ -555,7 +556,8 @@ async function showLessons(sectionId, sectionName) {
         </div>`).join('');
     }
   } catch(e) {
-    document.getElementById('lessonsList').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div></div>';
+    const offline = !navigator.onLine;
+    document.getElementById('lessonsList').innerHTML = `<div class="empty"><div class="empty-icon">${offline?'🛜':'⚠️'}</div><div class="empty-text">${offline?'Internet yo\'q':'Xato yuz berdi'}</div></div>`;
   }
 }
 
@@ -625,7 +627,8 @@ async function showLesson(lessonId, sectionId) {
       }
     }
   } catch(e) {
-    document.getElementById('lessonDetailContent').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">Xato yuz berdi</div><div class="empty-sub">Qayta urinib ko\'ring</div></div>';
+    const offline = !navigator.onLine;
+    document.getElementById('lessonDetailContent').innerHTML = `<div class="empty"><div class="empty-icon">${offline?'🛜':'⚠️'}</div><div class="empty-text">${offline?'Internet yo\'q':'Xato yuz berdi'}</div><div class="empty-sub">${offline?'Aloqa tiklanganda qayta oching':'Qayta urinib ko\'ring'}</div></div>`;
     const wb = document.querySelector('.watch-btn-wrap');
     if (wb) { wb.style.opacity = '1'; wb.style.transform = 'translateY(0)'; }
   }
