@@ -22,6 +22,7 @@ switch ($action) {
     case 'lessons':  getLessons();  break;
     case 'lesson':   getLesson();   break;
     case 'posts':    getPosts();    break;
+    case 'search':   doSearch();    break;
     default:
         http_response_code(400);
         echo json_encode(['error' => 'Noma\'lum action']);
@@ -120,6 +121,47 @@ function getLesson(): void {
     unset($lesson['cover_image']);
 
     echo json_encode(['success' => true, 'data' => $lesson]);
+}
+
+function doSearch(): void {
+    $q = trim($_GET['q'] ?? '');
+    if (mb_strlen($q) < 2) {
+        echo json_encode(['success' => true, 'sections' => [], 'lessons' => []]);
+        return;
+    }
+    $db   = getDB();
+    $like = '%' . $q . '%';
+
+    $stmt = $db->prepare("
+        SELECT s.id, s.name, s.image_path,
+               COUNT(l.id) AS lesson_count
+        FROM sections s
+        LEFT JOIN lessons l ON l.section_id = s.id AND l.is_active = 1
+        WHERE s.name LIKE ? AND s.is_active = 1
+        GROUP BY s.id ORDER BY s.sort_order LIMIT 10
+    ");
+    $stmt->execute([$like]);
+    $sections = $stmt->fetchAll();
+    foreach ($sections as &$s) {
+        $s['image_url'] = $s['image_path'] ? UPLOAD_URL . 'sections/' . $s['image_path'] : null;
+        unset($s['image_path']);
+    }
+
+    $stmt = $db->prepare("
+        SELECT l.id, l.title, l.cover_image, s.name AS section_name, l.section_id
+        FROM lessons l
+        JOIN sections s ON s.id = l.section_id
+        WHERE l.title LIKE ? AND l.is_active = 1
+        ORDER BY l.sort_order LIMIT 15
+    ");
+    $stmt->execute([$like]);
+    $lessons = $stmt->fetchAll();
+    foreach ($lessons as &$l) {
+        $l['cover_url'] = $l['cover_image'] ? UPLOAD_URL . 'lessons/' . $l['cover_image'] : null;
+        unset($l['cover_image']);
+    }
+
+    echo json_encode(['success' => true, 'sections' => $sections, 'lessons' => $lessons]);
 }
 
 function getPosts(): void {
