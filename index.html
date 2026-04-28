@@ -79,11 +79,11 @@
   </div>
 
   <!-- Hamjamiyat card -->
-  <div onclick="openLink('community')" style="margin:0 36px 16px;background:linear-gradient(135deg,rgba(200,168,75,.15),rgba(200,168,75,.05));border:1.5px solid rgba(200,168,75,.35);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s,box-shadow .15s" ontouchstart="this.style.transform='scale(.97)'" ontouchend="this.style.transform='scale(1)'">
+  <div onclick="openLink('community')" style="margin:0 36px 16px;background:linear-gradient(135deg,rgba(200,168,75,.15),rgba(200,168,75,.05));border:1.5px solid rgba(200,168,75,.35);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s" ontouchstart="this.style.transform='scale(.97)'" ontouchend="this.style.transform='scale(1)'">
     <div style="width:40px;height:40px;border-radius:12px;background:rgba(200,168,75,.15);border:1px solid rgba(200,168,75,.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💬</div>
     <div style="flex:1;min-width:0">
-      <div style="font-size:14px;font-weight:800;margin-bottom:2px">Hamjamiyatga qo'shiling</div>
-      <div style="font-size:11px;color:var(--text-muted)">Fikr almashing, savol bering</div>
+      <div style="font-size:14px;font-weight:800;margin-bottom:2px">Hamjamiyatga <span id="communityText" style="color:var(--gold);transition:opacity .3s">qo'shiling</span></div>
+      <div style="font-size:11px;color:var(--text-muted)">Kurs ishtirokchilari guruhi</div>
     </div>
     <div style="color:var(--gold);font-size:20px;flex-shrink:0">›</div>
   </div>
@@ -823,6 +823,22 @@ function openLink(type) {
     window.open(url, '_blank');
   }
 }
+
+// ===== HAMJAMIYAT MATN ANIMATSIYASI =====
+(function() {
+  const words = ["qo'shiling", "fikr almashing", "savol bering", "javob toping"];
+  let i = 0;
+  setInterval(() => {
+    const el = document.getElementById('communityText');
+    if (!el) return;
+    el.style.opacity = '0';
+    setTimeout(() => {
+      i = (i + 1) % words.length;
+      el.textContent = words[i];
+      el.style.opacity = '1';
+    }, 300);
+  }, 2000);
+})();
 
 // ===== OFFLINE TOAST =====
 (function() {
