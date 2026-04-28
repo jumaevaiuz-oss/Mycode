@@ -78,6 +78,16 @@
     </div>
   </div>
 
+  <!-- Hamjamiyat card -->
+  <div onclick="openLink('community')" style="margin:0 20px 16px;background:linear-gradient(135deg,rgba(200,168,75,.15),rgba(200,168,75,.05));border:1.5px solid rgba(200,168,75,.35);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:transform .15s,box-shadow .15s" ontouchstart="this.style.transform='scale(.97)'" ontouchend="this.style.transform='scale(1)'">
+    <div style="width:46px;height:46px;border-radius:14px;background:rgba(200,168,75,.15);border:1px solid rgba(200,168,75,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💬</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:15px;font-weight:800;margin-bottom:2px">Hamjamiyatga qo'shiling</div>
+      <div style="font-size:12px;color:var(--text-muted)">Fikr almashing, savol bering</div>
+    </div>
+    <div style="color:var(--gold);font-size:20px;flex-shrink:0">›</div>
+  </div>
+
   <div class="section-title">
     <span class="section-title-text">Bo'limlar</span>
     <span class="section-title-badge" id="sectionsCount">...</span>
@@ -295,10 +305,11 @@
 <script>
 const API_URL = 'api.php';
 const LINKS = {
-  telegram:  'https://t.me/+-sTySri3t7VmZmEy',      // O'zgartiring
-  instagram: 'https://instagram.com/anvar_abduqayum', // O'zgartiring
-  youtube:   'https://youtube.com/AnvarAbduqayum', // O'zgartiring
-  admin:     'https://t.me/shogirdlik365',      // O'zgartiring
+  telegram:  'https://t.me/+-sTySri3t7VmZmEy',
+  instagram: 'https://instagram.com/anvar_abduqayum',
+  youtube:   'https://youtube.com/AnvarAbduqayum',
+  community: 'https://t.me/developercc',
+  admin:     'https://t.me/shogirdlik365',
   dev:       'https://t.me/DeveloperCC',       // O'zgartiring
   kanal:     'https://t.me/yourchannel',       // O'zgartiring
 };
