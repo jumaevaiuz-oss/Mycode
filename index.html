@@ -306,6 +306,7 @@ const LINKS = {
 let currentSectionId = null;
 let currentSections = [];
 let savedLessons = JSON.parse(localStorage.getItem('ap_saved') || '[]');
+let recentLessons = JSON.parse(localStorage.getItem('ap_recent') || '[]');
 let bannerTimer = null;
 let currentBanner = 0;
 const BANNER_COUNT = 4;
@@ -617,6 +618,7 @@ async function showLesson(lessonId, sectionId) {
     const json = await res.json();
     if (json.success) {
       const l = json.data;
+      addToRecent({ id: lessonId, title: l.title, section_name: l.section_name, cover_url: l.cover_url });
       document.getElementById('lessonCover').innerHTML = l.cover_url
         ? `<img class="lesson-cover" src="${l.cover_url}" onload="this.style.opacity='1';this.style.transform='translateY(0)'">`
         : '<div class="lesson-cover-placeholder">📖</div>';
@@ -745,9 +747,11 @@ function showProfile() {
   const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const name = tg ? (tg.first_name + (tg.last_name ? ' ' + tg.last_name : '')) : 'Foydalanuvchi';
   const username = tg?.username ? '@' + tg.username : '';
+  const initials = name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const recent = recentLessons.slice(0, 5);
   document.getElementById('profileContent').innerHTML = `
-    <div style="text-align:center;padding:20px 0 30px">
-      <div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--gold-light),var(--gold-dark));display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 16px;box-shadow:0 4px 24px rgba(200,168,75,.3)">👤</div>
+    <div style="text-align:center;padding:20px 0 24px">
+      <div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--gold-light),var(--gold-dark));display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#000;margin:0 auto 16px;box-shadow:0 4px 24px rgba(200,168,75,.3);letter-spacing:-1px">${initials}</div>
       <div style="font-size:24px;font-weight:900;margin-bottom:4px">${esc(name)}</div>
       <div style="font-size:14px;color:var(--gold)">${username}</div>
     </div>
@@ -757,10 +761,42 @@ function showProfile() {
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Saqlangan</div>
       </div>
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center">
-        <div style="font-size:32px;font-weight:900;color:var(--gold)">${currentSections.length}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Bo'limlar</div>
+        <div style="font-size:32px;font-weight:900;color:var(--gold)">${recentLessons.length}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Ko'rilgan</div>
       </div>
-    </div>`;
+    </div>
+    ${recent.length ? `
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;padding:0 4px;margin-bottom:12px">🕐 Oxirgi ko'rilganlar</div>
+      <div class="lessons-list">
+        ${recent.map(l => `
+          <div class="lesson-card" onclick="showLessonFromProfile(${l.id})">
+            <div class="lesson-card-thumb">${l.cover_url ? `<img src="${l.cover_url}" loading="lazy" style="opacity:0;transition:opacity .3s" onload="this.style.opacity=1">` : '📖'}</div>
+            <div class="lesson-card-info">
+              <div class="lesson-card-num">${esc(l.section_name)}</div>
+              <div class="lesson-card-title">${esc(l.title)}</div>
+            </div>
+            <div class="lesson-card-arrow">›</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '<div class="empty" style="padding:30px 20px"><div class="empty-icon">🕐</div><div class="empty-text">Hali darslik ko\'rilmagan</div></div>'}`;
+}
+
+function addToRecent(lesson) {
+  recentLessons = recentLessons.filter(r => r.id !== lesson.id);
+  recentLessons.unshift(lesson);
+  if (recentLessons.length > 10) recentLessons = recentLessons.slice(0, 10);
+  localStorage.setItem('ap_recent', JSON.stringify(recentLessons));
+}
+
+function showLessonFromProfile(lessonId) {
+  showLesson(lessonId, null);
+  document.getElementById('backToLessons').onclick = () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('nav-profile').classList.add('active');
+    showProfile();
+    showScreen('profile');
+  };
 }
 
 // ===== LINKS =====
