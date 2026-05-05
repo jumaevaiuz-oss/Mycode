@@ -66,7 +66,7 @@ function handleMessage(array $msg): void {
     // /start
     if ($text === '/start') {
         clearState($userId);
-        if (isAdmin($userId)) sendAdminMenu($chatId);
+        if (isAdmin($userId)) sendAdminMenu($chatId, $userId);
         else sendUserWelcome($chatId, $msg['from']);
         return;
     }
@@ -74,7 +74,51 @@ function handleMessage(array $msg): void {
     // /admin — admin menyu
     if ($text === '/admin' && isAdmin($userId)) {
         clearState($userId);
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
+        return;
+    }
+
+    // /addadmin — superadmin uchun
+    if (str_starts_with($text, '/addadmin') && isSuperAdmin($userId)) {
+        $parts = explode(' ', trim($text));
+        $newId = isset($parts[1]) ? (int)$parts[1] : 0;
+        if (!$newId) {
+            sendMessage($chatId, "❌ Format: `/addadmin 123456789`");
+        } elseif (addAdminId($newId)) {
+            sendMessage($chatId, "✅ Admin qo'shildi: `{$newId}`");
+        } else {
+            sendMessage($chatId, "⚠️ Bu foydalanuvchi allaqachon admin!");
+        }
+        return;
+    }
+
+    // /removeadmin — superadmin uchun
+    if (str_starts_with($text, '/removeadmin') && isSuperAdmin($userId)) {
+        $parts = explode(' ', trim($text));
+        $rmId = isset($parts[1]) ? (int)$parts[1] : 0;
+        if (!$rmId) {
+            sendMessage($chatId, "❌ Format: `/removeadmin 123456789`");
+        } elseif (removeAdminId($rmId)) {
+            sendMessage($chatId, "✅ Admin o'chirildi: `{$rmId}`");
+        } else {
+            sendMessage($chatId, "⚠️ Bu ID adminlar ro'yxatida yo'q.");
+        }
+        return;
+    }
+
+    // /admins — superadmin uchun ro'yxat
+    if ($text === '/admins' && isSuperAdmin($userId)) {
+        $extraIds = getAdminIds();
+        $out  = "👥 *Adminlar ro'yxati:*\n\n";
+        $out .= "⭐ *Superadmin:*\n";
+        foreach (ADMIN_IDS as $id) { $out .= "• `{$id}`\n"; }
+        if ($extraIds) {
+            $out .= "\n👤 *Qo'shimcha adminlar:*\n";
+            foreach ($extraIds as $id) { $out .= "• `{$id}`\n"; }
+        } else {
+            $out .= "\n_Qo'shimcha admin yo'q_";
+        }
+        sendMessage($chatId, $out);
         return;
     }
 
@@ -95,7 +139,7 @@ function handleMessage(array $msg): void {
 
     // Admin uchun admin menyu
     if (isAdmin($userId)) {
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
         return;
     }
 
@@ -263,8 +307,8 @@ function handleCallback(array $cb): void {
     $state = getState($userId);
 
     // ---- ASOSIY MENYU ----
-    if ($data === 'back_main') { clearState($userId); editToAdminMenu($chatId, $msgId); return; }
-    if ($data === 'cancel')    { clearState($userId); editToAdminMenu($chatId, $msgId); return; }
+    if ($data === 'back_main') { clearState($userId); editToAdminMenu($chatId, $msgId, $userId); return; }
+    if ($data === 'cancel')    { clearState($userId); editToAdminMenu($chatId, $msgId, $userId); return; }
 
     // ---- BO'LIMLAR ----
     if ($data === 'sections_menu') { editSectionsList($chatId, $msgId); return; }
@@ -391,7 +435,26 @@ function handleCallback(array $cb): void {
     }
     if ($data === 'cancel_broadcast') {
         clearState($userId);
-        editToAdminMenu($chatId, $msgId);
+        editToAdminMenu($chatId, $msgId, $userId);
+        return;
+    }
+
+    // ---- ADMINLAR BOSHQARUVI (faqat superadmin) ----
+    if ($data === 'admins_menu' && isSuperAdmin($userId)) {
+        editAdminsList($chatId, $msgId);
+        return;
+    }
+    if ($data === 'add_admin' && isSuperAdmin($userId)) {
+        setState($userId, 'waiting_add_admin', []);
+        editMessage($chatId, $msgId, "👤 Yangi admin Telegram ID sini yuboring:\n\n_Bekor qilish uchun /cancel_");
+        return;
+    }
+    if (str_starts_with($data, 'confirm_remove_admin_') && isSuperAdmin($userId)) {
+        $rmId = (int)str_replace('confirm_remove_admin_', '', $data);
+        removeAdminId($rmId);
+        editMessage($chatId, $msgId, "✅ Admin o'chirildi: `{$rmId}`");
+        sleep(1);
+        editAdminsList($chatId, $msgId);
         return;
     }
 
@@ -483,7 +546,7 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
     // Bekor qilish
     if ($text === '/cancel') {
         clearState($userId);
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
         return;
     }
 
@@ -509,7 +572,7 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
             $db->prepare("UPDATE sections SET name=? WHERE id=?")->execute([$text, $data['section_id']]);
             clearState($userId);
             sendMessage($chatId, "✅ Bo'lim nomi o'zgartirildi: *{$text}*");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Darslik nomi (yangi)
@@ -528,7 +591,7 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
                 $db->prepare("UPDATE lessons SET description=? WHERE id=?")->execute([$text, $data['lesson_id']]);
                 clearState($userId);
                 sendMessage($chatId, "✅ Tavsif yangilandi.");
-                sendAdminMenu($chatId);
+                sendAdminMenu($chatId, $userId);
             } else {
                 // Yangi darslik — link kutish
                 setState($userId, 'waiting_lesson_link_new', [
@@ -568,7 +631,7 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
             $db->prepare("UPDATE lessons SET telegram_link=? WHERE id=?")->execute([$text, $data['lesson_id']]);
             clearState($userId);
             sendMessage($chatId, "✅ Link yangilandi.");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Darslik nomini o'zgartirish
@@ -576,7 +639,7 @@ function handleAdminState(array $msg, array $state, int $chatId, int $userId, st
             $db->prepare("UPDATE lessons SET title=? WHERE id=?")->execute([$text, $data['lesson_id']]);
             clearState($userId);
             sendMessage($chatId, "✅ Darslik nomi o'zgartirildi: *{$text}*");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Broadcast xabari
@@ -630,14 +693,14 @@ _/cancel_");
             getDB()->prepare("UPDATE posts SET title=? WHERE id=?")->execute([$text, $data['post_id']]);
             clearState($userId);
             sendMessage($chatId, "✅ Sarlavha yangilandi.");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         case 'waiting_post_content':
             getDB()->prepare("UPDATE posts SET content=? WHERE id=?")->execute([$text, $data['post_id']]);
             clearState($userId);
             sendMessage($chatId, "✅ Matn yangilandi.");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Kanal linki
@@ -645,7 +708,7 @@ _/cancel_");
             saveConfig('channel_link', $text);
             clearState($userId);
             sendMessage($chatId, "✅ Kanal linki saqlandi: {$text}");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Admin username
@@ -653,7 +716,7 @@ _/cancel_");
             saveConfig('admin_username', $text);
             clearState($userId);
             sendMessage($chatId, "✅ Admin username saqlandi: @{$text}");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
             break;
 
         // Dev username
@@ -661,12 +724,27 @@ _/cancel_");
             saveConfig('dev_username', $text);
             clearState($userId);
             sendMessage($chatId, "✅ Dasturchi username saqlandi: @{$text}");
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
+            break;
+
+        case 'waiting_add_admin':
+            $newId = (int)$text;
+            if (!$newId) {
+                sendMessage($chatId, "❌ Noto'g'ri ID. Faqat raqam yuboring:");
+            } elseif (addAdminId($newId)) {
+                clearState($userId);
+                sendMessage($chatId, "✅ Admin qo'shildi: `{$newId}`");
+                sendAdminMenu($chatId, $userId);
+            } else {
+                clearState($userId);
+                sendMessage($chatId, "⚠️ Bu foydalanuvchi allaqachon admin!");
+                sendAdminMenu($chatId, $userId);
+            }
             break;
 
         default:
             clearState($userId);
-            sendAdminMenu($chatId);
+            sendAdminMenu($chatId, $userId);
     }
 }
 
@@ -704,7 +782,7 @@ function handleImageUpload(array $msg, ?array $state, int $chatId, int $userId):
         $db->prepare("UPDATE sections SET image_path=? WHERE id=?")->execute([$fileName, $data['section_id']]);
         clearState($userId);
         sendMessage($chatId, "✅ Bo'lim rasmi saqlandi!");
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
 
     } elseif ($stateName === 'waiting_post_photo' && isset($data['post_id'])) {
         $fileName = downloadTelegramFileTo($fileId, 'posts');
@@ -717,7 +795,7 @@ function handleImageUpload(array $msg, ?array $state, int $chatId, int $userId):
         $db->prepare("UPDATE posts SET image_path=? WHERE id=?")->execute([$fileName, $data['post_id']]);
         clearState($userId);
         sendMessage($chatId, "✅ Post rasmi saqlandi!");
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
 
     } elseif ($stateName === 'waiting_lesson_photo' && isset($data['lesson_id'])) {
         $old = $db->prepare("SELECT cover_image FROM lessons WHERE id=?");
@@ -731,61 +809,51 @@ function handleImageUpload(array $msg, ?array $state, int $chatId, int $userId):
         $db->prepare("UPDATE lessons SET cover_image=? WHERE id=?")->execute([$fileName, $data['lesson_id']]);
         clearState($userId);
         sendMessage($chatId, "✅ Darslik rasmi saqlandi!");
-        sendAdminMenu($chatId);
+        sendAdminMenu($chatId, $userId);
     }
 }
 
 // ============================================================
 //  ADMIN MENYULAR
 // ============================================================
-function sendAdminMenu(int $chatId): void {
-    $keyboard = [
-        'inline_keyboard' => [
-            [
-                ['text' => '📂 Bo\'limlar', 'callback_data' => 'sections_menu'],
-                ['text' => '📚 Darsliklar', 'callback_data' => 'lessons_menu'],
-            ],
-            [
-                ['text' => '➕ Bo\'lim qo\'shish', 'callback_data' => 'add_section'],
-            ],
-            [
-                ['text' => '📝 Postlar', 'callback_data' => 'posts_menu'],
-            ],
-            [
-                ['text' => '📊 Statistika', 'callback_data' => 'stats'],
-                ['text' => '📣 Xabar yuborish', 'callback_data' => 'broadcast'],
-            ],
-            [
-                ['text' => '⚙️ Sozlamalar', 'callback_data' => 'channel_settings'],
-            ],
-        ]
+function sendAdminMenu(int $chatId, int $userId = 0): void {
+    $rows = [
+        [
+            ['text' => '📂 Bo\'limlar', 'callback_data' => 'sections_menu'],
+            ['text' => '📚 Darsliklar', 'callback_data' => 'lessons_menu'],
+        ],
+        [['text' => '➕ Bo\'lim qo\'shish', 'callback_data' => 'add_section']],
+        [['text' => '📝 Postlar', 'callback_data' => 'posts_menu']],
+        [
+            ['text' => '📊 Statistika', 'callback_data' => 'stats'],
+            ['text' => '📣 Xabar yuborish', 'callback_data' => 'broadcast'],
+        ],
+        [['text' => '⚙️ Sozlamalar', 'callback_data' => 'channel_settings']],
     ];
-    sendMessage($chatId, "🎛 *AvtoPilot Admin Panel*\n\nNimani qilmoqchisiz?", $keyboard);
+    if ($userId && isSuperAdmin($userId)) {
+        $rows[] = [['text' => '👥 Adminlar', 'callback_data' => 'admins_menu']];
+    }
+    sendMessage($chatId, "🎛 *AvtoPilot Admin Panel*\n\nNimani qilmoqchisiz?", ['inline_keyboard' => $rows]);
 }
 
-function editToAdminMenu(int $chatId, int $msgId): void {
-    $keyboard = [
-        'inline_keyboard' => [
-            [
-                ['text' => '📂 Bo\'limlar', 'callback_data' => 'sections_menu'],
-                ['text' => '📚 Darsliklar', 'callback_data' => 'lessons_menu'],
-            ],
-            [
-                ['text' => '➕ Bo\'lim qo\'shish', 'callback_data' => 'add_section'],
-            ],
-            [
-                ['text' => '📝 Postlar', 'callback_data' => 'posts_menu'],
-            ],
-            [
-                ['text' => '📊 Statistika', 'callback_data' => 'stats'],
-                ['text' => '📣 Xabar yuborish', 'callback_data' => 'broadcast'],
-            ],
-            [
-                ['text' => '⚙️ Sozlamalar', 'callback_data' => 'channel_settings'],
-            ],
-        ]
+function editToAdminMenu(int $chatId, int $msgId, int $userId = 0): void {
+    $rows = [
+        [
+            ['text' => '📂 Bo\'limlar', 'callback_data' => 'sections_menu'],
+            ['text' => '📚 Darsliklar', 'callback_data' => 'lessons_menu'],
+        ],
+        [['text' => '➕ Bo\'lim qo\'shish', 'callback_data' => 'add_section']],
+        [['text' => '📝 Postlar', 'callback_data' => 'posts_menu']],
+        [
+            ['text' => '📊 Statistika', 'callback_data' => 'stats'],
+            ['text' => '📣 Xabar yuborish', 'callback_data' => 'broadcast'],
+        ],
+        [['text' => '⚙️ Sozlamalar', 'callback_data' => 'channel_settings']],
     ];
-    editMessage($chatId, $msgId, "🎛 *AvtoPilot Admin Panel*\n\nNimani qilmoqchisiz?", $keyboard);
+    if ($userId && isSuperAdmin($userId)) {
+        $rows[] = [['text' => '👥 Adminlar', 'callback_data' => 'admins_menu']];
+    }
+    editMessage($chatId, $msgId, "🎛 *AvtoPilot Admin Panel*\n\nNimani qilmoqchisiz?", ['inline_keyboard' => $rows]);
 }
 
 function editSectionsList(int $chatId, int $msgId): void {
@@ -1007,7 +1075,36 @@ function saveUser(array $from): void {
 //  HELPERS
 // ============================================================
 function isAdmin(int $userId): bool {
+    if (in_array($userId, ADMIN_IDS)) return true;
+    return in_array($userId, getAdminIds());
+}
+
+function isSuperAdmin(int $userId): bool {
     return in_array($userId, ADMIN_IDS);
+}
+
+function getAdminIds(): array {
+    $json = getConfig('extra_admins');
+    if (!$json) return [];
+    $arr = json_decode($json, true);
+    return is_array($arr) ? array_map('intval', $arr) : [];
+}
+
+function addAdminId(int $id): bool {
+    if (in_array($id, ADMIN_IDS)) return false;
+    $ids = getAdminIds();
+    if (in_array($id, $ids)) return false;
+    $ids[] = $id;
+    saveConfig('extra_admins', json_encode($ids));
+    return true;
+}
+
+function removeAdminId(int $id): bool {
+    $ids = getAdminIds();
+    $new = array_values(array_filter($ids, fn($i) => $i !== $id));
+    if (count($new) === count($ids)) return false;
+    saveConfig('extra_admins', json_encode($new));
+    return true;
 }
 
 function getState(int $userId): ?array {
@@ -1107,6 +1204,28 @@ function editPostsList(int $chatId, int $msgId): void {
     $buttons[] = [['text' => '🔙 Orqaga', 'callback_data' => 'back_main']];
     $count = count($posts);
     editMessage($chatId, $msgId, "📝 *Postlar:* {$count} ta", ['inline_keyboard' => $buttons]);
+}
+
+function editAdminsList(int $chatId, int $msgId): void {
+    $extraIds = getAdminIds();
+    $text  = "👥 *Adminlar boshqaruvi*\n\n";
+    $text .= "⭐ *Superadmin:*\n";
+    foreach (ADMIN_IDS as $id) {
+        $text .= "• `{$id}` _(o'chirib bo'lmaydi)_\n";
+    }
+    $buttons = [];
+    if ($extraIds) {
+        $text .= "\n👤 *Qo'shimcha adminlar:*\n";
+        foreach ($extraIds as $id) {
+            $text .= "• `{$id}`\n";
+            $buttons[] = [['text' => "🗑 {$id} ni o'chirish", 'callback_data' => "confirm_remove_admin_{$id}"]];
+        }
+    } else {
+        $text .= "\n_Hozircha qo'shimcha admin yo'q_";
+    }
+    $buttons[] = [['text' => "➕ Admin qo'shish", 'callback_data' => 'add_admin']];
+    $buttons[] = [['text' => '🔙 Orqaga', 'callback_data' => 'back_main']];
+    editMessage($chatId, $msgId, $text, ['inline_keyboard' => $buttons]);
 }
 
 function editPostMenu(int $chatId, int $msgId, int $id): void {
