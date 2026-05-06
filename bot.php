@@ -240,7 +240,7 @@ function handleUserButton(int $chatId, int $userId, string $text): void {
             $text2 .= "• Yangi darsliklar haqida bildirishnoma olishingiz\n";
             $text2 .= "• Biznes va shaxsiy o'sish bo'yicha bilim olishingiz mumkin\n\n";
             $text2 .= "🔄 Versiya: 1.0\n";
-            $text2 .= "👨‍💻 Ishlab chiquvchi: @" . ADMIN_USERNAME;
+            $text2 .= "👨‍💻 Ishlab chiquvchi: @" . DEV_USERNAME;
             sendMessage($chatId, $text2);
             break;
 
