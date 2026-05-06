@@ -4,9 +4,13 @@
 require_once 'config.php';
 
 header('Content-Type: application/json; charset=utf-8');
-// CORS: faqat o'z domeningizdan ruxsat
+// CORS: faqat ruxsat etilgan domenlar
+$allowedOrigins = [
+    'https://6831eecaafce3.xvest3.ru',
+    'https://t.me',
+];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (strpos($origin, 'xvest3.ru') !== false || strpos($origin, 't.me') !== false) {
+if (in_array($origin, $allowedOrigins, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
 } else {
     header('Access-Control-Allow-Origin: ' . SITE_URL);

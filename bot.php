@@ -16,6 +16,15 @@ ignore_user_abort(true);
 require_once 'config.php';
 require_once 'upload_helper.php';
 
+// Webhook secret tekshiruvi
+if (!empty(WEBHOOK_SECRET)) {
+    $incoming = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+    if (!hash_equals(WEBHOOK_SECRET, $incoming)) {
+        http_response_code(403);
+        exit;
+    }
+}
+
 $input = file_get_contents('php://input');
 $update = json_decode($input, true);
 if (!$update) exit;
@@ -1119,7 +1128,7 @@ function sendMessage(int $chatId, string $text, ?array $keyboard = null, string 
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $params,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT        => 8,
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
@@ -1143,7 +1152,7 @@ function editMessage(int $chatId, int $msgId, string $text, ?array $keyboard = n
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $params,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT        => 8,
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
@@ -1157,7 +1166,7 @@ function answerCallback(string $id): void {
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => ['callback_query_id' => $id],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT        => 5,
         CURLOPT_CONNECTTIMEOUT => 3,
     ]);
