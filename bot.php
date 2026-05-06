@@ -149,12 +149,10 @@ function handleMessage(array $msg): void {
 
 function detectButton(string $text): ?string {
     $map = [
-        'avtopilot'      => '🚀 Avtopilot',
-        'kanal'          => '📢 Kanal',
-        'aloqa'          => '📞 Aloqa',
-        'bot haqida'     => 'ℹ️ Bot haqida',
-        'bildirishnoma'  => '🔔 Bildirishnoma',
-        'dasturchi'      => '🧑‍💻 Dasturchi',
+        'ilovani ochish'      => '📤 Ilovani ochish',
+        'bildirishnoma'       => '🔔 Bildirishnoma',
+        'qo\'llab quvvatlash' => '☎️ Qo\'llab quvvatlash',
+        'bot haqida'          => '📃 Bot haqida',
     ];
     $lower = mb_strtolower($text);
     foreach ($map as $key => $val) {
@@ -181,16 +179,12 @@ function sendUserWelcome(int $chatId, array $from): void {
     $keyboard = [
         'keyboard' => [
             [
-                ['text' => '🚀 Avtopilot'],
-                ['text' => '📢 Kanal'],
-            ],
-            [
-                ['text' => '📞 Aloqa'],
-                ['text' => 'ℹ️ Bot haqida'],
-            ],
-            [
+                ['text' => '📤 Ilovani ochish'],
                 ['text' => '🔔 Bildirishnoma'],
-                ['text' => '🧑‍💻 Dasturchi'],
+            ],
+            [
+                ['text' => '☎️ Qo\'llab quvvatlash'],
+                ['text' => '📃 Bot haqida'],
             ],
         ],
         'resize_keyboard' => true,
@@ -204,42 +198,32 @@ function sendUserWelcome(int $chatId, array $from): void {
 function handleUserButton(int $chatId, int $userId, string $text): void {
     switch ($text) {
 
-        case '🚀 Avtopilot':
-            $miniAppUrl = SITE_URL . '/index.html';
+        case '📤 Ilovani ochish':
             $keyboard = [
                 'inline_keyboard' => [[
-                    ['text' => '🚀 Avtopilotni ochish', 'web_app' => ['url' => $miniAppUrl]]
+                    ['text' => '📤 Ilovani ochish', 'url' => 'https://t.me/avtopilotminiappbot/avtopilot']
                 ]]
             ];
-            sendMessage($chatId, "👇 Quyidagi tugmani bosib Mini Appni oching:", $keyboard);
+            sendMessage($chatId, "👇 Quyidagi tugmani bosib ilovani oching:", $keyboard);
             break;
 
-        case '📢 Kanal':
+        case '☎️ Qo\'llab quvvatlash':
             $keyboard = [
                 'inline_keyboard' => [[
-                    ['text' => '📢 Kanalga o\'tish', 'url' => CHANNEL_LINK]
+                    ['text' => '📩 Murojaat qilish', 'url' => 'https://t.me/' . ADMIN_USERNAME]
                 ]]
             ];
-            sendMessage($chatId, "📢 Bizning rasmiy kanalimiz:", $keyboard);
+            sendMessage($chatId, "☎️ *Qo'llab-quvvatlash xizmati*\n\nSavol yoki muammolaringiz bo'lsa, quyidagi tugma orqali bog'laning:", $keyboard);
             break;
 
-        case '📞 Aloqa':
-            $keyboard = [
-                'inline_keyboard' => [[
-                    ['text' => '✍️ Admin bilan bog\'lanish', 'url' => 'https://t.me/' . ADMIN_USERNAME]
-                ]]
-            ];
-            sendMessage($chatId, "📞 Admin bilan bog'lanish uchun:", $keyboard);
-            break;
-
-        case 'ℹ️ Bot haqida':
-            $text2  = "ℹ️ *AvtoPilot Bot haqida*\n\n";
+        case '📃 Bot haqida':
+            $text2  = "📃 *AvtoPilot Bot haqida*\n\n";
             $text2 .= "🤖 Bu bot AvtoPilot platformasining rasmiy boti.\n\n";
             $text2 .= "📚 Platforma orqali siz:\n";
-            $text2 .= "• 10+ bo'lim bo'yicha darsliklar ko'rishingiz\n";
+            $text2 .= "• Bo'limlar bo'yicha darsliklar ko'rishingiz\n";
             $text2 .= "• Yangi darsliklar haqida bildirishnoma olishingiz\n";
             $text2 .= "• Biznes va shaxsiy o'sish bo'yicha bilim olishingiz mumkin\n\n";
-            $text2 .= "🔄 Versiya: 1.0\n";
+            $text2 .= "🔄 Versiya: 3.0\n";
             $text2 .= "👨‍💻 Ishlab chiquvchi: @" . DEV_USERNAME;
             sendMessage($chatId, $text2);
             break;
@@ -263,14 +247,6 @@ function handleUserButton(int $chatId, int $userId, string $text): void {
             sendMessage($chatId, "🔔 *Bildirishnoma holati:* {$status}\n\nYangi darsliklar va bo'limlar qo'shilganda xabar olasiz.", $keyboard);
             break;
 
-        case '🧑‍💻 Dasturchi':
-            $keyboard = [
-                'inline_keyboard' => [[
-                    ['text' => '🧑‍💻 Dasturchi bilan bog\'lanish', 'url' => 'https://t.me/' . DEV_USERNAME]
-                ]]
-            ];
-            sendMessage($chatId, "🧑‍💻 Bot dasturchisi bilan bog'lanish:", $keyboard);
-            break;
     }
 }
 
